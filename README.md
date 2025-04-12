@@ -68,6 +68,8 @@ Please place the checkpoints in ./ckpt/.
    <td> 36.30/0.9809</td>
    <td> 31.02/0.9417 </td>
    <td>  25.79/0.8717</td>
+   <td>   22.6 </td>
+   <td>   1.1 </td>
     </tr>
   </tbody>
 </table>
