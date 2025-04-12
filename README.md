@@ -1,4 +1,4 @@
-# MAMFI
+# MAMFI: Learning Motion at All Scales via Memory-as-Motion for Frame Interpolation
 
 ## Environment Setup
 
