@@ -108,9 +108,8 @@ The following datasets were used:
 ### Benchmarks
 Run the benchmark using the following command:
 ```bash
-Make bench_Ours-C
-Make bench_Ours-E
-Make bench_Ours-B
+Make bench_Ours-S
+Make bench_Ours-L
 ```
 
 ## License and Acknowledgement
