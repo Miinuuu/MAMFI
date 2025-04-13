@@ -120,3 +120,6 @@ This project is distributed under the Apache 2.0 license. It incorporates concep
 and users are advised to adhere to the licensing terms of these respective projects.
 
 We extend our gratitude to the authors of these works for their exceptional contributions.
+
+## Appreciation
+The code by the aforementioned authors and Lucidrains’s work have been extremely helpful. I express my gratitude.
