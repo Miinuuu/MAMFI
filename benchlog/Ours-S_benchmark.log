@@ -1,0 +1,9 @@
+2025-04-13 13:02:48,848 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
+2025-04-13 13:03:15,618 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
+2025-04-13 13:03:46,071 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
+2025-04-13 13:04:39,968 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
+2025-04-13 13:05:59,739 - INFO - {'Dataset': 'UCF101', 'Avg PSNR': np.float64(35.430586449343174), 'Avg SSIM': np.float32(0.9701222), 'Avg LPIPS': np.float64(0.03361826399304366), 'Avg FloLPIPS': np.float64(0.04669920865196259)}
+2025-04-13 13:12:24,584 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
+2025-04-13 13:13:43,700 - INFO - {'Dataset': 'UCF101', 'Avg PSNR': np.float64(35.430586449343174), 'Avg SSIM': np.float32(0.9701222), 'Avg LPIPS': np.float64(0.03361826399304366), 'Avg FloLPIPS': np.float64(0.04669911246358215)}
+2025-04-13 13:15:38,797 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
+2025-04-13 13:16:40,452 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
