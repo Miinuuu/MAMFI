@@ -1,10 +1,11 @@
-2025-04-13 13:02:48,848 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
-2025-04-13 13:03:15,618 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
-2025-04-13 13:03:46,071 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
-2025-04-13 13:04:39,968 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
-2025-04-13 13:05:59,739 - INFO - {'Dataset': 'UCF101', 'Avg PSNR': np.float64(35.430586449343174), 'Avg SSIM': np.float32(0.9701222), 'Avg LPIPS': np.float64(0.03361826399304366), 'Avg FloLPIPS': np.float64(0.04669920865196259)}
-2025-04-13 13:12:24,584 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
-2025-04-13 13:13:43,700 - INFO - {'Dataset': 'UCF101', 'Avg PSNR': np.float64(35.430586449343174), 'Avg SSIM': np.float32(0.9701222), 'Avg LPIPS': np.float64(0.03361826399304366), 'Avg FloLPIPS': np.float64(0.04669911246358215)}
-2025-04-13 13:15:38,797 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
-2025-04-13 13:16:40,452 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
 2025-04-13 13:29:26,465 - INFO - {'model': 'Ours-S', 'ckpt': 'Ours-S'}
+2025-04-13 13:50:23,378 - INFO - {'Dataset': 'Vimeo90K', 'Avg PSNR': np.float64(36.149893078206375), 'Avg SSIM': np.float32(0.9800781), 'Avg LPIPS': np.float64(0.024028651511600996), 'Avg FloLPIPS': np.float64(0.04479655720138876)}
+2025-04-13 13:51:40,268 - INFO - {'Dataset': 'UCF101', 'Avg PSNR': np.float64(35.430586449343174), 'Avg SSIM': np.float32(0.9701222), 'Avg LPIPS': np.float64(0.03361826399304366), 'Avg FloLPIPS': np.float64(0.04669915788980446)}
+2025-04-13 14:22:40,393 - INFO - {'Dataset': 'Xiph-2K', 'Avg PSNR': np.float64(36.81839717871636), 'Avg SSIM': np.float64(0.9445946966985389), 'Avg LPIPS': np.float64(0.10937217880059413), 'Avg FloLPIPS': np.float64(0.14357358113178337)}
+2025-04-13 14:53:06,483 - INFO - {'Dataset': 'Xiph-4K', 'Avg PSNR': np.float64(34.696447035759576), 'Avg SSIM': np.float64(0.9077750711231253), 'Avg LPIPS': np.float64(0.23526981518584855), 'Avg FloLPIPS': np.float64(0.261621201714995)}
+2025-04-13 15:04:51,970 - INFO - {'Dataset': 'SNU_FILMtest-easy', 'Avg PSNR': np.float64(40.0537456621459), 'Avg SSIM': np.float32(0.99111634), 'Avg LPIPS': np.float64(0.023765791796388165), 'Avg FloLPIPS': np.float64(0.03770013383041406)}
+2025-04-13 15:16:32,849 - INFO - {'Dataset': 'SNU_FILMtest-medium', 'Avg PSNR': np.float64(36.18570065607823), 'Avg SSIM': np.float32(0.981169), 'Avg LPIPS': np.float64(0.04059798056109538), 'Avg FloLPIPS': np.float64(0.06641116926386471)}
+2025-04-13 15:28:14,630 - INFO - {'Dataset': 'SNU_FILMtest-hard', 'Avg PSNR': np.float64(30.83182476917698), 'Avg SSIM': np.float32(0.94028854), 'Avg LPIPS': np.float64(0.0751959313871339), 'Avg FloLPIPS': np.float64(0.12488891713306188)}
+2025-04-13 15:39:56,842 - INFO - {'Dataset': 'SNU_FILMtest-extreme', 'Avg PSNR': np.float64(25.626560709571827), 'Avg SSIM': np.float32(0.8688907), 'Avg LPIPS': np.float64(0.1457737633913395), 'Avg FloLPIPS': np.float64(0.23050764260903722)}
+2025-04-13 15:40:01,487 - INFO - {'Dataset': 'MiddleBury', 'Avg IE': np.float64(2.0092807079550785)}
+2025-04-13 15:40:01,487 - INFO - ---------------------end-----------------------

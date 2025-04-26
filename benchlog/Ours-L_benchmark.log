@@ -1,1 +1,11 @@
 2025-04-13 13:29:36,540 - INFO - {'model': 'Ours-L', 'ckpt': 'Ours-L'}
+2025-04-13 13:51:08,108 - INFO - {'Dataset': 'Vimeo90K', 'Avg PSNR': np.float64(36.58048286262152), 'Avg SSIM': np.float32(0.97994524), 'Avg LPIPS': np.float64(0.022322443302984645), 'Avg FloLPIPS': np.float64(0.040349342123743706)}
+2025-04-13 13:52:27,581 - INFO - {'Dataset': 'UCF101', 'Avg PSNR': np.float64(35.5156383562878), 'Avg SSIM': np.float32(0.9702543), 'Avg LPIPS': np.float64(0.03441481292059634), 'Avg FloLPIPS': np.float64(0.04674838848494511)}
+2025-04-13 14:24:45,960 - INFO - {'Dataset': 'Xiph-2K', 'Avg PSNR': np.float64(37.313455417700936), 'Avg SSIM': np.float64(0.9471177393732106), 'Avg LPIPS': np.float64(0.11229789000935853), 'Avg FloLPIPS': np.float64(0.14398084755283685)}
+2025-04-13 14:57:06,528 - INFO - {'Dataset': 'Xiph-4K', 'Avg PSNR': np.float64(35.13818658076609), 'Avg SSIM': np.float64(0.9114754199337193), 'Avg LPIPS': np.float64(0.24357146467557367), 'Avg FloLPIPS': np.float64(0.2701400638538964)}
+2025-04-13 15:09:24,216 - INFO - {'Dataset': 'SNU_FILMtest-easy', 'Avg PSNR': np.float64(40.07478817017237), 'Avg SSIM': np.float32(0.9892834), 'Avg LPIPS': np.float64(0.02471923801546631), 'Avg FloLPIPS': np.float64(0.03863635770253642)}
+2025-04-13 15:21:40,422 - INFO - {'Dataset': 'SNU_FILMtest-medium', 'Avg PSNR': np.float64(36.30102418559037), 'Avg SSIM': np.float32(0.97952425), 'Avg LPIPS': np.float64(0.042118915941213225), 'Avg FloLPIPS': np.float64(0.06575765800249252)}
+2025-04-13 15:34:02,946 - INFO - {'Dataset': 'SNU_FILMtest-hard', 'Avg PSNR': np.float64(31.019219340949054), 'Avg SSIM': np.float32(0.9403389), 'Avg LPIPS': np.float64(0.0748481382150203), 'Avg FloLPIPS': np.float64(0.1214974389636829)}
+2025-04-13 15:46:17,025 - INFO - {'Dataset': 'SNU_FILMtest-extreme', 'Avg PSNR': np.float64(25.796818437956905), 'Avg SSIM': np.float32(0.8702835), 'Avg LPIPS': np.float64(0.14172708306972298), 'Avg FloLPIPS': np.float64(0.2248173017265095)}
+2025-04-13 15:46:22,344 - INFO - {'Dataset': 'MiddleBury', 'Avg IE': np.float64(1.8941052818984616)}
+2025-04-13 15:46:22,344 - INFO - ---------------------end-----------------------
