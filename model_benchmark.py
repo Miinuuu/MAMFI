@@ -186,6 +186,181 @@ def bench (model,args ):
             print('Avg SSIM:', np.mean(fltSsim))
             print('Avg LPIPS:', np.mean(fltLpips))
             print('Avg FloLPIPS:', np.mean(fltfloLpips))
+    
+    
+    if  'XTest' in args.bench:
+
+        print(f'=========================Starting testing=========================')
+        print(f'Dataset: XTest   Model: {args.model}   TTA: {False}')
+
+        TTA=False
+        timestep = torch.tensor(0.5).reshape(1, 1, 1).unsqueeze(0).cuda()
+
+        def getXVFI(dir, multiple=8, t_step_size=32):
+            """ make [I0,I1,It,t,scene_folder] """
+            testPath = []
+            t = np.linspace((1 / multiple), (1 - (1 / multiple)), (multiple - 1))
+            for type_folder in sorted(glob.glob(os.path.join(dir, '*', ''))):
+                for scene_folder in sorted(glob.glob(os.path.join(type_folder, '*', ''))):
+                    frame_folder = sorted(glob.glob(scene_folder + '*.png'))
+                    for idx in range(0, len(frame_folder), t_step_size):
+                        if idx == len(frame_folder) - 1:
+                            break
+                        for mul in range(multiple - 1):
+                            I0I1It_paths = []
+                            I0I1It_paths.append(frame_folder[idx])
+                            I0I1It_paths.append(frame_folder[idx + t_step_size])
+                            I0I1It_paths.append(frame_folder[idx + int((t_step_size // multiple) * (mul + 1))])
+                            I0I1It_paths.append(t[mul])
+                            testPath.append(I0I1It_paths)
+            return testPath
+        
+        def _recursive_generator(frame1, frame2, down_scale, num_recursions, index):
+            if num_recursions == 0:
+                yield frame1, index
+            else:
+                # mid_frame = model.hr_inference(frame1, frame2, True, TTA=TTA, timestep=0.5, down_scale=down_scale)
+                mid_frame  = model.hr_inference(frame1, frame2, timestep=timestep, down_scale = down_scale)
+
+                id = 2 ** (num_recursions - 1)
+                yield from _recursive_generator(frame1, mid_frame, down_scale, num_recursions - 1, index - id)
+                yield from _recursive_generator(mid_frame, frame2, down_scale, num_recursions - 1, index + id)
+
+
+        data_path = os.path.join(args.datasets_path,'X4K1000FPS/test')
+        listFiles = getXVFI(data_path, multiple=8, t_step_size=32)
+
+        count = 0
+        input_frames = [item[:2] for item in listFiles][::7]
+        gts = [item[2:] for item in listFiles]
+
+
+        for strMode in ['XTEST-2k', 'XTEST-4k']: #
+            fltPsnr, fltSsim = [], []
+            count = 0
+            for intFrame in tqdm.tqdm(input_frames):
+                npyOne = np.array(cv2.imread(intFrame[0])).astype(np.float32) * (1.0 / 255.0)
+                npyTwo = np.array(cv2.imread(intFrame[1])).astype(np.float32) * (1.0 / 255.0)
+                gtFrames = gts[count*7:(count+1)*7]
+                count += 1
+
+                if strMode == 'XTEST-2k':  
+                    down_scale = 0.5
+                    npyOne = cv2.resize(src=npyOne, dsize=(2048, 1080), fx=0.0, fy=0.0, interpolation=cv2.INTER_AREA)
+                    npyTwo = cv2.resize(src=npyTwo, dsize=(2048, 1080), fx=0.0, fy=0.0, interpolation=cv2.INTER_AREA)
+                else:
+                    down_scale = 0.25
+
+                tenOne = torch.FloatTensor(np.ascontiguousarray(npyOne.transpose(2, 0, 1)[None, :, :, :])).cuda()
+                tenTwo = torch.FloatTensor(np.ascontiguousarray(npyTwo.transpose(2, 0, 1)[None, :, :, :])).cuda()
+
+                padder = InputPadder(tenOne.shape, 32)
+                tenOne, tenTwo = padder.pad(tenOne, tenTwo)
+
+                frames = list(_recursive_generator(tenOne, tenTwo, down_scale, 3, 4))
+
+                fltPsnr_single_testcase, fltSsim_single_testcase = [], []
+                frames = frames[1:] 
+                i = 0
+                for frame, index in frames:
+                    tenEstimate = padder.unpad(frame[0])
+                    npyEstimate = (tenEstimate.detach().cpu().numpy().transpose(1, 2, 0) * 255.0).clip(0.0, 255.0).round().astype(np.uint8)
+
+                    tenEstimate = torch.FloatTensor(npyEstimate.transpose(2, 0, 1)[None, :, :, :]).cuda() / 255.0
+                    npyTruth = np.array(cv2.imread(gtFrames[i][0])).astype(np.float32) * (1.0 / 255.0)
+                    if strMode == 'XTEST-2k':
+                        npyTruth = cv2.resize(src=npyTruth, dsize=(2048, 1080), fx=0.0, fy=0.0, interpolation=cv2.INTER_AREA)
+                    tenGT = torch.FloatTensor(np.ascontiguousarray(npyTruth.transpose(2, 0, 1)[None, :, :, :])).cuda()
+
+                    fltPsnr_single_testcase.append(-10 * math.log10(torch.mean((tenEstimate - tenGT) * (tenEstimate - tenGT)).cpu().data))
+                    fltSsim_single_testcase.append(ssim_matlab(tenEstimate, tenGT).detach().cpu().numpy())
+                    i = i + 1
+                fltPsnr.append(np.mean(fltPsnr_single_testcase))
+                fltSsim.append(np.mean(fltSsim_single_testcase))
+            print(f'{strMode}  PSNR: {np.mean(fltPsnr)}  SSIM: {np.mean(fltSsim)}')
+
+
+
+
+    if  'XTest_L' in args.bench:
+        print(f'=========================Starting testing=========================')
+        print(f'Dataset: XTest_L   Model: {args.model}   TTA: {False}')
+        def getXVFI(dir, multiple=8, t_step_size=32):
+            """ make [I0,I1,It,t,scene_folder] """
+            testPath = []
+            t = np.linspace((1 / multiple), (1 - (1 / multiple)), (multiple - 1))
+            for type_folder in sorted(glob.glob(os.path.join(dir, '*', ''))):
+                for scene_folder in sorted(glob.glob(os.path.join(type_folder, '*', ''))):
+                    frame_folder = sorted(glob.glob(scene_folder + '*.png'))
+                    for idx in range(0, len(frame_folder), t_step_size):
+                        if idx == len(frame_folder) - 1:
+                            break
+                        for mul in range(multiple - 1):
+                            I0I1It_paths = []
+                            I0I1It_paths.append(frame_folder[idx])
+                            I0I1It_paths.append(frame_folder[idx + t_step_size])
+                            I0I1It_paths.append(frame_folder[idx + int((t_step_size // multiple) * (mul + 1))])
+                            I0I1It_paths.append(t[mul])
+                            testPath.append(I0I1It_paths)
+
+            return testPath
+
+        data_path = os.path.join(args.datasets_path,'X4K1000FPS/test')
+        listFiles = getXVFI(data_path,2)
+        
+        
+        w_img_n=4
+        w_img_n_start=0
+        w_img_n_end=w_img_n_start+w_img_n
+
+
+        for strMode in ['XTEST-2k', 'XTEST-4k']:
+            fltPsnr, fltSsim , fltLpips,fltfloLpips= [], [],[],[]
+            pred_list=[]
+            gt_list=[]
+            overlay_list=[]
+            flow_list=[]
+            mask_list=[]
+
+
+            for i,intFrame in enumerate(tqdm.tqdm(listFiles)):
+                npyOne = np.array(cv2.imread(intFrame[0])).astype(np.float32) * (1.0 / 255.0)
+                npyTwo = np.array(cv2.imread(intFrame[1])).astype(np.float32) * (1.0 / 255.0)
+                npyTruth = np.array(cv2.imread(intFrame[2])).astype(np.float32) * (1.0 / 255.0)
+
+                if strMode == 'XTEST-2k': #downsample
+                    down_scale = 0.5
+                    npyOne = cv2.resize(src=npyOne, dsize=(2048, 1080), fx=0.0, fy=0.0, interpolation=cv2.INTER_AREA)
+                    npyTwo = cv2.resize(src=npyTwo, dsize=(2048, 1080), fx=0.0, fy=0.0, interpolation=cv2.INTER_AREA)
+                    npyTruth = cv2.resize(src=npyTruth, dsize=(2048, 1080), fx=0.0, fy=0.0, interpolation=cv2.INTER_AREA)
+                else:
+                    down_scale = 0.25
+
+                tenOne = torch.FloatTensor(np.ascontiguousarray(npyOne.transpose(2, 0, 1)[None, :, :, :])).cuda()
+                tenTwo = torch.FloatTensor(np.ascontiguousarray(npyTwo.transpose(2, 0, 1)[None, :, :, :])).cuda()
+                tenGT = torch.FloatTensor(np.ascontiguousarray(npyTruth.transpose(2, 0, 1)[None, :, :, :])).cuda()
+                timestep = torch.tensor(intFrame[3]).reshape(1, 1, 1).unsqueeze(0).cuda()
+                timestep = torch.tensor(0.5).reshape(1, 1, 1).unsqueeze(0).cuda()
+                
+    
+
+                padder = InputPadder(tenOne.shape, 32)
+                tenOne_p, tenTwo_p = padder.pad(tenOne, tenTwo)
+                #timestep= torch.from_numpy( np.expand_dims(np.array(intFrame[3], dtype=np.float32), 0))
+
+                tenEstimate  = model.hr_inference(tenOne_p, tenTwo_p, timestep=timestep, down_scale = down_scale)
+                tenEstimate = padder.unpad(tenEstimate)
+
+                #npyEstimate = (tenEstimate.detach().cpu().numpy().transpose(1, 2, 0) * 255.0).clip(0.0, 255.0).round().astype(np.uint8)
+                #tenEstimate = torch.FloatTensor(npyEstimate.transpose(2, 0, 1)[None, :, :, :]).cuda() / 255.0
+
+                fltPsnr.append(-10 * math.log10(torch.mean((tenEstimate - tenGT) * (tenEstimate - tenGT)).cpu().data))
+                fltSsim.append(ssim_matlab(tenEstimate,tenGT).detach().cpu().numpy())
+                fltLpips.append(lpips_fn(tenEstimate*2-1,tenGT*2-1,).item())
+                fltfloLpips.append(flolpips_fn(tenOne,tenTwo,tenEstimate,tenGT).item())
+
+            print(f'{strMode}  PSNR: {np.mean(fltPsnr)}  SSIM: {np.mean(fltSsim)}, LPIPS: {np.mean(fltLpips)}, Flo_LPIPS: {np.mean(fltfloLpips)}')
+            logger.info({'Dataset': str(strMode)+'-L', 'Avg PSNR' : np.mean(fltPsnr) ,  "Avg SSIM" : np.mean(fltSsim),  "Avg LPIPS" : np.mean(fltLpips),  "Avg FloLPIPS" : np.mean(fltfloLpips)} )
 
     if  'XTest_8X' in args.bench:
         print(f'=========================Starting testing=========================')
