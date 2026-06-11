@@ -20,7 +20,7 @@ pip install -r requirements.txt
 
 ## Checkpoints
 Checkpoints can be downloaded from the following link:  
-[Download Checkpoints](https://drive.google.com/drive/folders/17Vw8eaNMqH8_Hi11-PVTcxDsZDfcvM7Z?usp=sharing)
+[Download Checkpoints](https://drive.google.com/drive/folders/1XkoBc3HrantG26B9XQweV9CwENr6RD_X?usp=sharing)
 
 Please place the checkpoints in ./ckpt/.
 
