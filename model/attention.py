@@ -42,6 +42,8 @@ class SegmentedAttention_CSWIN_bi(Module):
         cross=False,
         causal=False,
         sliding = False,
+        sliding_row_mask = False,
+        sliding_bidirectional = False,
         accept_value_residual = False,
         attend_kwargs: dict = dict(),
         use_flex_attn = False
@@ -80,6 +82,16 @@ class SegmentedAttention_CSWIN_bi(Module):
         self.total_segment_len = total_segment_len
 
         self.sliding = sliding # sliding window attn - doubt their non-sliding results being the best. local attention with overlapping windows is very strong
+
+        # sliding_row_mask      - previous / next window must be in the same row (column for the vertical branch)
+        # sliding_bidirectional - also attend to the next window, with |q - k| <= total_segment_len instead of q - k <= total_segment_len
+
+        assert sliding or not (sliding_row_mask or sliding_bidirectional), '`sliding_row_mask` / `sliding_bidirectional` require `sliding = True`'
+        assert not (use_flex_attn and (sliding_row_mask or sliding_bidirectional)), 'flex attention path does not support `sliding_row_mask` / `sliding_bidirectional`'
+
+        self.sliding_row_mask = sliding_row_mask
+        self.sliding_bidirectional = sliding_bidirectional
+        self.window_offsets = (-1, 0, 1) if sliding_bidirectional else (-1, 0)
 
         self.split_heads = Rearrange('b n (h d) -> b h n d', h = heads)
         self.merge_heads = Rearrange('b h n d -> b n (h d)')
@@ -252,7 +264,8 @@ class SegmentedAttention_CSWIN_bi(Module):
         flex_attn_fn: Callable | None = None,
         disable_flex_attn = False,
         output_gating = None, #retrieve
-        cache = None
+        cache = None,
+        kv_valid = None # (H * W,) bool, False for zero-pad tokens
     ):
         is_inferencing = exists(cache)
 
@@ -273,6 +286,11 @@ class SegmentedAttention_CSWIN_bi(Module):
 
         # auto pad to multiple
         seq, inverse_segment = pad_and_segment_with_inverse_2d(seq, (1,total_segment_len), fold_into_batch = False,inverse_remove_pad=True,fold_seq=True)
+
+        if exists(kv_valid):
+            kv_valid, _ = pad_and_segment_with_inverse_2d(kv_valid.view(1, H, W, 1).float(), (1, total_segment_len), fold_into_batch = False, inverse_remove_pad = True, fold_seq = True)
+            kv_valid = kv_valid.view(-1) > 0.5
+            assert kv_valid.numel() == seq.shape[-2]
 
 
         # attention seq= #B,N,C
@@ -310,28 +328,34 @@ class SegmentedAttention_CSWIN_bi(Module):
 
         attend_kwargs = dict()
 
+        num_windows = seq.shape[-2] // total_segment_len
+        offsets = self.window_offsets if self.sliding else (0,)
+
         if self.sliding:
+            # concat neighboring windows in the order of `offsets`, which the mask columns follow
             k, v = tuple(rearrange(t, '(b w) ... -> b w ...', b = batch) for t in (k, v))
-            k, v = tuple(pad_at_dim(t, (1, 0), value = 0., dim = 1) for t in (k, v))
-            k = cat((k[:, :-1], k[:, 1:]), dim = -2)
-            v = cat((v[:, :-1], v[:, 1:]), dim = -2)
+            k, v = tuple(pad_at_dim(t, (-offsets[0], offsets[-1]), value = 0., dim = 1) for t in (k, v))
+            k, v = tuple(cat([t[:, (o - offsets[0]):(o - offsets[0] + num_windows)] for o in offsets], dim = -2) for t in (k, v))
             k, v = tuple(rearrange(t, 'b w ... -> (b w) ...') for t in (k, v))
 
-            # take care of masking
+        # take care of masking
 
-            sidx = torch.arange(seq.shape[-2], device = seq.device)
-            q_idx = rearrange(sidx, '(w n) -> w n', n = total_segment_len)
-            k_idx = pad_at_dim(q_idx, (1, 0), dim = 0, value = -1e4)
-            k_idx = cat((k_idx[:-1], k_idx[1:]), dim = -1)
+        if self.sliding or exists(kv_valid):
+            window_mask = create_window_attn_mask(
+                num_windows,
+                (seq.shape[-2] // H) // total_segment_len,
+                total_segment_len,
+                offsets = offsets,
+                bidirectional = self.sliding_bidirectional,
+                respect_rows = self.sliding_row_mask,
+                kv_valid = kv_valid,
+                device = seq.device
+            )
 
-            q_idx = rearrange(q_idx, 'w i -> w i 1')
-            k_idx = rearrange(k_idx, 'w j -> w 1 j')
+            window_mask = F.pad(window_mask, (self.num_persist_mem_tokens, 0), value = True)
 
-            sliding_mask = (q_idx - k_idx) <= total_segment_len
-            sliding_mask = F.pad(sliding_mask, (self.num_persist_mem_tokens, 0), value = True)
-
-            sliding_mask = repeat(sliding_mask, 'w i j -> (b w) 1 i j', b = batch)
-            attend_kwargs.update(mask = sliding_mask)
+            window_mask = repeat(window_mask, 'w i j -> (b w) 1 i j', b = batch)
+            attend_kwargs.update(mask = window_mask)
 
         # take care of persistent memory key / values
 

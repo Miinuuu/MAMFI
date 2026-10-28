@@ -34,6 +34,9 @@ def init_model_config(F=32,
                      ,NEURAL_MEM_SEGMENT_LEN = 144                      # set smaller for more granularity for learning rate / momentum etc
                      ,NEURAL_MEM_BATCH_SIZE = 144                     # set smaller to update the neural memory weights more often as it traverses the sequence
                      ,SLIDING_WINDOWS = False
+                     ,SLIDING_ROW_MASK = False                        # sliding window may not cross row / column boundaries
+                     ,SLIDING_BIDIRECTIONAL = False                   # sliding window also attends to the next window
+                     ,MASK_PAD_TOKENS = False                         # mask zero-pad tokens out of attention keys and neural memory stores
                      ,STORE_ATTN_POOL_CHUNKS = True                   # whether to use attention pooling for chunk derived momentum, per-layer lr mod, decay
                      ,MEMORY_MODEL_PER_LAYER_LEARNED_LR = True
                      ,NEURAL_MEM_WEIGHT_RESIDUAL = True               # learning to accept contributions from the weights of the previous neural mem layer brings about significant improvements. this was improvised and not in the paper, but inspired by the value residual learning free lunch paper
@@ -75,6 +78,9 @@ def init_model_config(F=32,
         ,'NEURAL_MEM_SEGMENT_LEN' : NEURAL_MEM_SEGMENT_LEN                      # set smaller for more granularity for learning rate / momentum etc
         ,'NEURAL_MEM_BATCH_SIZE' : NEURAL_MEM_BATCH_SIZE                   # set smaller to update the neural memory weights more often as it traverses the sequence
         ,'SLIDING_WINDOWS' : SLIDING_WINDOWS 
+        ,'SLIDING_ROW_MASK' : SLIDING_ROW_MASK
+        ,'SLIDING_BIDIRECTIONAL' : SLIDING_BIDIRECTIONAL
+        ,'MASK_PAD_TOKENS' : MASK_PAD_TOKENS
         ,'STORE_ATTN_POOL_CHUNKS' : STORE_ATTN_POOL_CHUNKS                    # whether to use attention pooling for chunk derived momentum, per-layer lr mod, decay
         ,'MEMORY_MODEL_PER_LAYER_LEARNED_LR' : MEMORY_MODEL_PER_LAYER_LEARNED_LR 
         ,'NEURAL_MEM_WEIGHT_RESIDUAL' : NEURAL_MEM_WEIGHT_RESIDUAL              # learning to accept contributions from the weights of the previous neural mem layer brings about significant improvements. this was improvised and not in the paper, but inspired by the value residual learning free lunch paper

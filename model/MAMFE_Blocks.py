@@ -54,6 +54,9 @@ class MAMFE_Block(nn.Module):
                 
                 use_flex_attn = False,
                 sliding_window_attn = True,
+                sliding_row_mask = False,
+                sliding_bidirectional = False,
+                mask_pad_tokens = False,
                 neural_mem_weight_residual = True,#true
                 is_first_neural_mem=False,      
                 idx=False  
@@ -115,7 +118,9 @@ class MAMFE_Block(nn.Module):
                 accept_value_residual = not is_first,
                 num_longterm_mem_tokens =num_longterm_mem_tokens, # 4,4
                 num_persist_mem_tokens = num_persist_mem_tokens,
-                sliding = sliding_window_attn
+                sliding = sliding_window_attn,
+                sliding_row_mask = sliding_row_mask,
+                sliding_bidirectional = sliding_bidirectional
             )
             attn1 = SegmentedAttention_CSWIN_bi(
                 dim = dim//2,
@@ -128,7 +133,9 @@ class MAMFE_Block(nn.Module):
                 accept_value_residual = not is_first,
                 num_longterm_mem_tokens =num_longterm_mem_tokens, # 4,4
                 num_persist_mem_tokens = num_persist_mem_tokens,
-                sliding = sliding_window_attn
+                sliding = sliding_window_attn,
+                sliding_row_mask = sliding_row_mask,
+                sliding_bidirectional = sliding_bidirectional
             )
 
             mem = None
@@ -176,8 +183,11 @@ class MAMFE_Block(nn.Module):
         self.register_buffer('zero', torch.tensor(0.), persistent = False)
         # flex attn related
         assert not (use_flex_attn and not exists(flex_attention)), 'you need to be on the latest pytorch with a cuda device available'
+        assert not (use_flex_attn and mask_pad_tokens), 'flex attention path does not support `mask_pad_tokens`'
         self.use_flex_attn = use_flex_attn
         self.num_persist_mem_tokens = num_persist_mem_tokens
+        # mask zero-pad tokens out of attention keys and neural memory stores
+        self.mask_pad_tokens = mask_pad_tokens
 
 
     def initialize_persistent_memory(self, persistent_memory_dim: int):
@@ -222,7 +232,32 @@ class MAMFE_Block(nn.Module):
         segment_len, num_mem = self.segment_len, self.num_longterm_mem_tokens
         return  ceil(seq_len  /segment_len)  * (num_mem+segment_len)
         # 56//16 = 3 * 4 + 56 =  68 <-> 20-20-20-20 (8+8P+4m) -> 80
-        # 32//16 = 2 *4 + 32 = 40  , 20 20 
+        # 32//16 = 2 *4 + 32 = 40  , 20 20
+
+    def token_valid_mask(
+        self,
+        H,
+        W,
+        device = None
+    ):
+        # (H * seq_W_len_with_mem,), (W * seq_H_len_with_mem,) bool - False for zero-pad tokens
+        # built with the same pad / segment / pack chain as x0, x1 in forward so the layouts match
+        segment_len, attn_window_size, num_mem = self.segment_len, self.attn_window_size, self.num_longterm_mem_tokens
+        ones = torch.ones(1, H, W, 1, device = device)
+
+        valid0, inverse_segment0 = pad_and_segment_with_inverse_2d(ones, (1,segment_len), fold_into_batch=True,inverse_remove_pad = False,fold_seq=True)
+        valid1, inverse_segment1 = pad_and_segment_with_inverse_2d(ones, (segment_len,1), fold_into_batch=True,inverse_remove_pad = False,fold_seq=True)
+
+        valid0, _ = pack_with_inverse((valid0, valid0.new_ones(valid0.shape[0], num_mem, 1)), 'b * d')
+        valid1, _ = pack_with_inverse((valid1, valid1.new_ones(valid1.shape[0], num_mem, 1)), 'b * d')
+
+        valid0 = inverse_segment0(valid0,w=(1,attn_window_size),fold_seq=False)
+        valid1 = inverse_segment1(valid1,w=(attn_window_size,1),fold_seq=False)
+
+        valid0 = valid0[:, :, :self.seq_len_with_longterm_mem3(W)]
+        valid1 = valid1[:, :self.seq_len_with_longterm_mem3(H), : ].transpose(1,2)
+
+        return valid0.reshape(-1) > 0.5, valid1.reshape(-1) > 0.5
 
 
     def _init_weights(self, m):
@@ -309,6 +344,16 @@ class MAMFE_Block(nn.Module):
             flex_attn1_fn = partial(flex_attention, block_mask = block1_mask)
 
 
+        # zero-pad token masks for attention keys / neural memory stores
+
+        kv_valid0 = kv_valid1 = None
+        store_mask0 = store_mask1 = None
+
+        if self.mask_pad_tokens:
+            kv_valid0, kv_valid1 = self.token_valid_mask(H, W, device = x.device)
+            store_mask0 = repeat(kv_valid0, 'n -> b n', b = B)
+            store_mask1 = repeat(kv_valid1, 'n -> b n', b = B)
+
         # value residual
         value0_residual,value1_residual = value_residual
 
@@ -337,6 +382,7 @@ class MAMFE_Block(nn.Module):
                 disable_flex_attn = disable_flex_attn,
                 flex_attn_fn = flex_attn0_fn,
                 output_gating = attn0_out_gates,
+                kv_valid = kv_valid0,
             )
 
             attn1_out, values1 = attn1(
@@ -349,6 +395,7 @@ class MAMFE_Block(nn.Module):
                 disable_flex_attn = disable_flex_attn,
                 flex_attn_fn = flex_attn1_fn,
                 output_gating = attn1_out_gates,
+                kv_valid = kv_valid1,
             )
 
 
@@ -361,12 +408,14 @@ class MAMFE_Block(nn.Module):
                 retrieved0, next_neural_mem0_cache = mem0.forward(
                     qkv_mem_input0,
                     state =None,
-                    prev_weights = mem0_weight_residual
+                    prev_weights = mem0_weight_residual,
+                    store_mask = store_mask0
                 )
                 retrieved1, next_neural_mem1_cache = mem1.forward(
                     qkv_mem_input1,
                     state = None,
-                    prev_weights = mem1_weight_residual
+                    prev_weights = mem1_weight_residual,
+                    store_mask = store_mask1
                 )
 
                 if self.neural_mem_weight_residual:
