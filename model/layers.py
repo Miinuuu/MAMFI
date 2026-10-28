@@ -436,6 +436,43 @@ def create_mac_block_mask(seq_len, window_size, persist_mem_len, sliding = False
     block_mask = create_block_mask(create_mac_mask, B = None, H = None, Q_LEN = seq_len, KV_LEN = seq_len + persist_mem_len, _compile = True)
     return block_mask
 
+
+def create_window_attn_mask(
+    num_windows,
+    windows_per_row,
+    window_size,
+    offsets = (-1, 0),
+    bidirectional = False,
+    respect_rows = False,
+    kv_valid = None,
+    device = None
+):
+    # bool mask (w, i, o * n), True = attend
+    # key columns are ordered by `offsets`, which must match the order k / v windows are concatenated in
+    w_idx = torch.arange(num_windows, device = device)
+    nbr_idx = rearrange(w_idx, 'w -> w 1') + torch.tensor(offsets, device = device)
+    nbr_valid = (nbr_idx >= 0) & (nbr_idx < num_windows)
+
+    # do not let a window look into a window of the previous / next row (or column)
+    if respect_rows:
+        nbr_valid = nbr_valid & ((nbr_idx // windows_per_row) == rearrange(w_idx // windows_per_row, 'w -> w 1'))
+
+    n_idx = torch.arange(window_size, device = device)
+    q_idx = rearrange(w_idx * window_size, 'w -> w 1 1') + rearrange(n_idx, 'i -> 1 i 1')
+    k_idx = rearrange(rearrange(nbr_idx * window_size, 'w o -> w o 1') + n_idx, 'w o n -> w 1 (o n)')
+
+    dist = q_idx - k_idx
+    mask = (dist.abs() if bidirectional else dist) <= window_size
+    mask = mask & repeat(nbr_valid, 'w o -> w 1 (o n)', n = window_size)
+
+    # mask out keys that are zero padding
+    if exists(kv_valid):
+        kv_valid = rearrange(kv_valid, '(w n) -> w n', n = window_size)
+        kv_valid = kv_valid[nbr_idx.clamp(0, num_windows - 1)]
+        mask = mask & rearrange(kv_valid, 'w o n -> w 1 (o n)')
+
+    return mask
+
 ##########################################################################################
 def pad_and_segment_with_inverse(
     seq,
@@ -527,7 +564,7 @@ def pad_and_segment_with_inverse_2d(
         seq = nn.functional.pad(seq, (0, 0, pad_left, pad_right, pad_top, pad_bottom))
 
     if fold_into_batch:
-        seq = window_partition(seq, window_size,fold_seq)
+        seq = window_partition(seq, window_size, fold_seq = fold_seq)
     else:
         if fold_seq:
             seq=seq.view(batch,-1,C)

@@ -43,6 +43,9 @@ class MAMFE(nn.Module):
                 ,NEURAL_MEM_SEGMENT_LEN = 16                      # set smaller for more granularity for learning rate / momentum etc
                 ,NEURAL_MEM_BATCH_SIZE = 32                     # set smaller to update the neural memory weights more often as it traverses the sequence
                 ,SLIDING_WINDOWS = False
+                ,SLIDING_ROW_MASK = False                        # sliding window may not cross row / column boundaries
+                ,SLIDING_BIDIRECTIONAL = False                   # sliding window also attends to the next window
+                ,MASK_PAD_TOKENS = False                         # mask zero-pad tokens out of attention keys and neural memory stores
                 ,STORE_ATTN_POOL_CHUNKS = True                   # whether to use attention pooling for chunk derived momentum, per-layer lr mod, decay
                 ,MEMORY_MODEL_PER_LAYER_LEARNED_LR = True
                 ,NEURAL_MEM_WEIGHT_RESIDUAL = True               # learning to accept contributions from the weights of the previous neural mem layer brings about significant improvements. this was improvised and not in the paper, but inspired by the value residual learning free lunch paper
@@ -149,6 +152,9 @@ class MAMFE(nn.Module):
                         neural_memory_qkv_receives_diff_views = NEURAL_MEM_QKV_RECEIVES_DIFF_VIEW,
                         use_flex_attn = USE_FLEX_ATTN,
                         sliding_window_attn = SLIDING_WINDOWS,
+                        sliding_row_mask = SLIDING_ROW_MASK,
+                        sliding_bidirectional = SLIDING_BIDIRECTIONAL,
+                        mask_pad_tokens = MASK_PAD_TOKENS,
                         neural_memory_model = neural_memory_model,
                         heads = num_heads[i-self.conv_stages],
                         dim_head = embed_dims[i]//num_heads[i-self.conv_stages],
